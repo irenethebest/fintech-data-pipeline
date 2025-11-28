@@ -1,0 +1,33 @@
+# --- Core Data Manipulation ---
+pandas>=2.0.0
+numpy>=1.24.0
+
+# --- Synthetic Data Generation ---
+# Essential for your 'ingestion' scripts
+Faker>=20.0.0
+
+# # --- Configuration Management ---
+# # For reading the .yml config files in your structure
+# PyYAML>=6.0
+
+# --- dbt ---
+dbt-core>=1.6.0
+dbt-databricks>=1.6.0  # The specific adapter for your cloud
+
+# --- Airflow ---
+# Note: Usually Airflow runs in its own environment (Docker/Astronmer), 
+# but if running locally for testing:
+apache-airflow>=2.7.0
+apache-airflow-providers-databricks>=4.0.0
+
+# # below is an old version
+# # --- Development & Testing ---
+# # For running unit tests in your 'tests/' folder
+# pytest>=7.4.0
+
+# # --- Databricks & Spark (Local Dev) ---
+# # Note: These are pre-installed on the Databricks Cluster.
+# # We include them here so your local VS Code gives you 
+# # auto-complete and error checking.
+# pyspark>=3.5.0
+# databricks-sdk>=0.12.0
