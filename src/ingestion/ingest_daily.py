@@ -35,7 +35,7 @@ def generate_daily_batch():
             category = 'Salary'
         else:
             amount = round(random.uniform(5, 400), 2) * -1
-            category = random.choice(['Food', 'Tech', 'Travel'])
+            category = random.choice(['Food', 'Tech', 'Travel', 'Retail'])
 
         data_tx.append({
             'transaction_id': fake.uuid4(),

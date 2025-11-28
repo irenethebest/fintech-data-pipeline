@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+
+# Environment Variables & Secrets (CRITICAL)
+.env
+secrets.json
+
+# Data Files (Don't commit 2000 rows of CSVs)
+*.csv
+*.parquet
+*.json
+data/
+
+# IDE Settings
+.vscode/
+.idea/
+
+# dbt specific
+dbt_project/dbt_packages/
+dbt_project/target/
+dbt_project/logs/
