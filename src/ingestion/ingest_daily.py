@@ -84,4 +84,4 @@ table_path_fx = "/mnt/delta/finance/exchange_rates_bronze"
 sdf_transactions.write.format("delta").mode("append").saveAsTable("finance_transactions_bronze")
 sdf_rates.write.format("delta").mode("append").saveAsTable("finance_exchange_rates_bronze")
 
-print(f"Success! Appended 2000 transactions and 2 FX rates for {execution_date}")
+print(f"Success! Appended 5000 transactions and 2 FX rates for {execution_date}")
