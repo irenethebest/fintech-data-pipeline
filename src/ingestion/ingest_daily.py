@@ -26,7 +26,7 @@ def generate_daily_batch():
     # In a real scenario, you'd read existing IDs from the Customer table
     customer_ids = [f'CUST_{str(i).zfill(4)}' for i in range(1, 51)]
     
-    for _ in range(2000):
+    for _ in range(5000):
         txn_type = random.choice(['Purchase', 'Withdrawal', 'Transfer', 'Deposit'])
         
         # Logic to determine amount (simplified for brevity)
