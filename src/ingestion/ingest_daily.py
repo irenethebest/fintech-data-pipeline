@@ -65,7 +65,7 @@ def generate_daily_batch():
 
         if txn_type == 'Purchase':
             amount = round(random.uniform(5, 400), 2) * -1
-            purchase_category = random.choice(['Food', 'Tech', 'Travel', 'Retail', 'Entertainment'])
+            purchase_category = random.choice(['Food', 'Appliance', 'Travel', 'Retail', 'Entertainment'])
             purchase_channel = random.choice(['Online', 'In-Store'])
         elif txn_type == 'Deposit':
             amount = round(random.uniform(1000, 5000), 2)
