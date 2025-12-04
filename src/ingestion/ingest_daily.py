@@ -2,86 +2,128 @@ import pandas as pd
 import numpy as np
 import random
 from faker import Faker
-from datetime import datetime
-from pyspark.sql.functions import lit
+from datetime import datetime, timedelta
+from pyspark.sql import SparkSession
+
+# Initialize Spark
+spark = SparkSession.builder.appName("DailyIngestion").get_databricks_support().getOrCreate()
 
 # Initialize Faker
 fake = Faker()
-# We remove the static seed here. 
-# Since this runs daily, we want DIFFERENT data every day.
 
 # --- CONFIGURATION ---
-# In a real pipeline, you often parameterize the date
-execution_date = datetime.now()
-print(f"Generating data for batch date: {execution_date.strftime('%Y-%m-%d')}")
+current_time = datetime.now()
+
+# LOGIC FIX:
+# We generate data for YESTERDAY to ensure the day is fully complete.
+# If run on 2023-10-25 at 10:00 AM, we generate data for 2023-10-24.
+business_date = current_time - timedelta(days=1)
+
+# Processing time is NOW (when the ingestion job is actually running)
+processing_time = current_time 
+
+print(f"Job running at: {processing_time}")
+print(f"Generating data for business date: {business_date.strftime('%Y-%m-%d')}")
 
 def generate_daily_batch():
     
-    # 1. GENERATE NEW TRANSACTIONS (Fact Table)
-    # ------------------------------------------------
-    # Simulating 2000 transactions happening "today"
+    # 1. GENERATE NEW TRANSACTIONS
     data_tx = []
     
-    # Existing customer base IDs (assuming 50 existing customers)
-    # In a real scenario, you'd read existing IDs from the Customer table
-    customer_ids = [f'CUST_{str(i).zfill(4)}' for i in range(1, 51)]
+    # Customer Pool Logic (10k pool, 1.5k active)
+    all_possible_ids = range(1, 10001)
+    daily_active_users = random.sample(all_possible_ids, 1500)
     
     for _ in range(5000):
+        # A. Randomize Time Logic
+        # We use 'business_date' (Yesterday), so we can safely use ANY time (00:00 to 23:59)
+        random_hour = random.randint(0, 23)
+        random_minute = random.randint(0, 59)
+        random_second = random.randint(0, 59)
+        
+        txn_datetime = business_date.replace(
+            hour=random_hour, 
+            minute=random_minute, 
+            second=random_second, 
+            microsecond=0
+        )
+        
+        # LOGIC CHECK: 
+        # Since txn_datetime is yesterday and processing_time is today,
+        # txn_datetime < processing_time is ALWAYS true.
+
+        # B. Select Customer
+        cust_num = random.choice(daily_active_users)
+        customer_id = f'CUST_{str(cust_num).zfill(5)}'
+
+        # C. Select Type
         txn_type = random.choice(['Purchase', 'Withdrawal', 'Transfer', 'Deposit'])
         
-        # Logic to determine amount (simplified for brevity)
-        if txn_type == 'Deposit':
-            amount = round(random.uniform(1000, 5000), 2)
-            category = 'Salary'
-        else:
+        # D. Logic for Amount, Category, Channel
+        purchase_category = None
+        purchase_channel = None 
+
+        if txn_type == 'Purchase':
             amount = round(random.uniform(5, 400), 2) * -1
-            category = random.choice(['Food', 'Tech', 'Travel', 'Retail'])
+            purchase_category = random.choice(['Food', 'Tech', 'Travel', 'Retail', 'Entertainment'])
+            purchase_channel = random.choice(['Online', 'In-Store'])
+        elif txn_type == 'Deposit':
+            amount = round(random.uniform(1000, 5000), 2)
+        else:
+            amount = round(random.uniform(20, 500), 2) * -1
 
         data_tx.append({
             'transaction_id': fake.uuid4(),
-            'customer_id': random.choice(customer_ids),
-            'transaction_date': execution_date, # STRICTLY TODAY
+            'customer_id': customer_id,
+            'transaction_date': txn_datetime,   # e.g., Yesterday 14:00
+            'time_processed': processing_time,  # e.g., Today 10:00
             'amount': amount,
             'currency': 'USD',
             'transaction_type': txn_type,
-            'category': category,
+            'purchase_category': purchase_category,
+            'purchase_channel': purchase_channel,
             'status': 'Completed'
         })
         
     df_tx_pandas = pd.DataFrame(data_tx)
     
-    # 2. GENERATE DAILY EXCHANGE RATES (Reference Table)
-    # ------------------------------------------------
-    # Just generating one row per currency for "today"
+    # 2. GENERATE FX RATES
     data_fx = []
-    # Add random fluctuation to a base rate
     eur_rate = 1.10 + np.random.normal(0, 0.005)
     gbp_rate = 1.25 + np.random.normal(0, 0.005)
     
-    data_fx.append({'date': execution_date.date(), 'currency': 'EUR', 'rate_to_usd': eur_rate})
-    data_fx.append({'date': execution_date.date(), 'currency': 'GBP', 'rate_to_usd': gbp_rate})
+    data_fx.append({
+        'date': business_date.date(), # Rate for YESTERDAY
+        'currency': 'EUR', 
+        'rate_to_usd': eur_rate,
+        'time_processed': processing_time
+    })
+    data_fx.append({
+        'date': business_date.date(), 
+        'currency': 'GBP', 
+        'rate_to_usd': gbp_rate,
+        'time_processed': processing_time
+    })
     
     df_fx_pandas = pd.DataFrame(data_fx)
 
     return df_tx_pandas, df_fx_pandas
 
-# --- EXECUTION & WRITE TO DELTA ---
+# --- EXECUTION ---
 
-# Generate the data in Pandas
-pdf_transactions, pdf_rates = generate_daily_batch()
+if __name__ == "__main__":
+    pdf_transactions, pdf_rates = generate_daily_batch()
 
-# Convert to Spark DataFrames
-sdf_transactions = spark.createDataFrame(pdf_transactions)
-sdf_rates = spark.createDataFrame(pdf_rates)
+    sdf_transactions = spark.createDataFrame(pdf_transactions)
+    sdf_rates = spark.createDataFrame(pdf_rates)
 
-# Write to Delta Lake (Bronze Layer)
-# Mode 'append' adds new rows without deleting old ones
-table_path_tx = "/mnt/delta/finance/transactions_bronze" 
-table_path_fx = "/mnt/delta/finance/exchange_rates_bronze"
+    bronze_tx_table = "fintech_ops.bronze.transactions_history"
+    bronze_fx_table = "fintech_ops.bronze.exchange_rates_history"
 
-# Note: In Unity Catalog, you would use saveAsTable("catalog.schema.table")
-# Here we use saveAsTable with a default path or managed table approach
-sdf_transactions.write.format("delta").mode("append").saveAsTable("finance_transactions_bronze")
-sdf_rates.write.format("delta").mode("append").saveAsTable("finance_exchange_rates_bronze")
+    print(f"Writing to {bronze_tx_table}...")
+    sdf_transactions.write.format("delta").mode("append").saveAsTable(bronze_tx_table)
 
-print(f"Success! Appended 5000 transactions and 2 FX rates for {execution_date}")
+    print(f"Writing to {bronze_fx_table}...")
+    sdf_rates.write.format("delta").mode("append").saveAsTable(bronze_fx_table)
+
+    print("Success! Data successfully appended.")
