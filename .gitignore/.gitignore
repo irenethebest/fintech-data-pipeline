@@ -7,7 +7,7 @@ venv/
 .env
 secrets.json
 
-# Data Files (Don't commit 2000 rows of CSVs)
+# Data Files (Don't commit 5000 rows of CSVs)
 *.csv
 *.parquet
 *.json

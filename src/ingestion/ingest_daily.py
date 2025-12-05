@@ -5,8 +5,7 @@ from faker import Faker
 from datetime import datetime, timedelta
 from pyspark.sql import SparkSession
 
-# Initialize Spark
-spark = SparkSession.builder.appName("DailyIngestion").get_databricks_support().getOrCreate()
+spark = SparkSession.builder.appName("DailyIngestion").getOrCreate()
 
 # Initialize Faker
 fake = Faker()
