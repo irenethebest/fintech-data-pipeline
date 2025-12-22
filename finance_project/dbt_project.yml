@@ -31,6 +31,10 @@ clean-targets:         # directories to be removed by `dbt clean`
 # files using the `{{ config(...) }}` macro.
 models:
   finance_project:
-    # Config indicated by + and applies to all files under models/example/
-    example:
-      +materialized: view
+    # Configures all models in the project
+    materialized: view
+    
+    # Configures only models in the 'staging' folder
+    staging:
+      +schema: silver  # This tells dbt: "Put these tables in [target]_silver"
+      +materialized: table # Optional: Silver is often better as tables, not views

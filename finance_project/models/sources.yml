@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: fintech_bronze        # The reference name we will use in dbt code
+    database: fintech_ops       # This must match the Catalog.Schema you created in Databricks
+    schema: bronze              # The schema where ingest_daily.py saves data
+    
+    tables:
+      - name: transactions_history
+        description: "Raw transaction logs ingested from Python script"
+        columns:
+          - name: transaction_id
+            tests:
+              - unique
+              - not_null
+      - name: exchange_rates_history  
+        description: "Daily exchange rates ingested from Python script"
